@@ -32,7 +32,6 @@ public class XPathMain {
         System.out.println("Parse Tree: " + parseTree.toStringTree());
 
         XPathEvaluator evaluator = new XPathEvaluator();
-
         List<Node> result = evaluator.visit(parseTree);
 
         // convert dom nodes back to xml

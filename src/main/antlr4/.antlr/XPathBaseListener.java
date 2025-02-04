@@ -1,4 +1,4 @@
-// Generated from /Users/shaolongli/Desktop/cse232B_Milestone1/src/main/antlr4/XPath.g4 by ANTLR 4.13.1
+// Generated from c:/Users/Shaolong Li/Desktop/cse232B_Milestone1/src/main/antlr4/XPath.g4 by ANTLR 4.13.1
 
 package antlr.XPath;
 
