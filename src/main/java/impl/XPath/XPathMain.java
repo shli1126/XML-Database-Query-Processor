@@ -1,21 +1,24 @@
 package impl.XPath;
 
-import java.util.List;
 import java.io.File;
+import java.util.List;
 
-import antlr.XPath.XPathLexer;
-import antlr.XPath.XPathParser;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.*;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+
+import antlr.XPath.XPathLexer;
+import antlr.XPath.XPathParser;
 
 
 public class XPathMain {
