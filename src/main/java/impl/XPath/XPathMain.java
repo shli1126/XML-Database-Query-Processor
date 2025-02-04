@@ -20,12 +20,28 @@ import org.w3c.dom.Node;
 import antlr.XPath.XPathLexer;
 import antlr.XPath.XPathParser;
 
-
 public class XPathMain {
-    public static void main(String[] args) {
-        String xpathQuery = "doc(\"j_caesar.xml\")//SCENE[SPEECH/SPEAKER/text() = \"CAESAR\"]";
-        String outputFilename = "result.xml";
 
+    public static void main(String[] args) {
+        String filePath = "src/main/java/resources/";
+
+        // Find all persons in the play:
+        // String xpathQuery = "doc(\"" + filePath + "j_caesar.xml\")//PERSONA";
+
+        // Find the scenes in which CAESAR speaks
+        // String xpathQuery = "doc(\"" + filePath + "j_caesar.xml\")//SCENE[SPEECH/SPEAKER/text() = \"CAESAR\"]";
+
+        //Find the acts containing some scene in which both CAESAR and BRUTUS speak
+        // String xpathQuery = "doc(\"" + filePath + "j_caesar.xml\")//ACT[SCENE [SPEECH/SPEAKER/text() = \"CAESAR\" and SPEECH/SPEAKER/text() = \"BRUTUS\"]]";
+        // String xpathQuery = "doc(\"" + filePath + "j_caesar.xml\")//ACT[SCENE [SPEECH/SPEAKER/text() = \"CAESAR\"][SPEECH/SPEAKER/text() = \"BRUTUS\"]]";
+
+
+        //Find the acts in which CAESAR no longer appears
+        String xpathQuery = "doc(\"" + filePath + "j_caesar.xml\")//ACT[not .//SPEAKER/text() = \"CAESAR\"]";
+
+
+
+        String outputFilename = "result.xml";
         ParseTree parseTree = parseXPath(xpathQuery);
 
         // !!!debug
