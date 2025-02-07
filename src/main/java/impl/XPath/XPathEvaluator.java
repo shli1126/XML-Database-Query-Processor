@@ -1,25 +1,21 @@
 package impl.XPath;
 
+import antlr.XPath.XPathBaseVisitor;
+import antlr.XPath.XPathParser;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
-import antlr.XPath.XPathBaseVisitor;
-import antlr.XPath.XPathParser;
-
 public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
-
-    private Document document;
 
     // no need for constructor, default rule is ap, starts with doc("filename.xml")
     // TODO
@@ -28,6 +24,7 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
         String fileName = ctx.getChild(0).getChild(2).getText();
         fileName = fileName.substring(1, fileName.length() - 1);
 
+        Document document;
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
@@ -64,36 +61,36 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
         if (t == null) {
             return res;
         }
-        // single child case
+        // With only one child, case (3) - (7)
         if (t.getChildCount() == 1) {
-            // TAGNAME
+            // <TAG NAME/>
             if (t.getText().matches("[a-zA-Z_][a-zA-Z0-9_-]*")) {
                 String tagName = t.getChild(0).getText();
                 NodeList nodes = n.getChildNodes();
                 for (int i = 0; i < nodes.getLength(); i++) {
                     Node node = nodes.item(i);
-                    if (node.getNodeType() == Node.ELEMENT_NODE
-                            && node.getNodeName().equals(tagName)) {
+                    // don't include text and comment node
+                    if (node.getNodeType() == Node.ELEMENT_NODE && node.getNodeName().equals(tagName)) {
                         res.add(node);
                     }
                 }
             } // '*'
-            else if (t.getChild(0).getText().equals("*")) {
+            else if (t.getText().equals("*")) {
                 NodeList nodes = n.getChildNodes();
                 for (int i = 0; i < nodes.getLength(); i++) {
                     res.add(nodes.item(i));
                 }
             } // '.'
-            else if (t.getChild(0).getText().equals(".")) {
+            else if (t.getText().equals(".")) {
                 res.add(n);
             } // '..'
-            else if (t.getChild(0).getText().equals("..")) {
+            else if (t.getText().equals("..")) {
                 Node parent = n.getParentNode();
                 if (parent != null) {
                     res.add(parent);
                 }
             } // 'text()'
-            else if (t.getChild(0).getText().equals("text()")) {
+            else if (t.getText().equals("text()")) {
                 NodeList nodes = n.getChildNodes();
                 for (int i = 0; i < nodes.getLength(); i++) {
                     if (nodes.item(i).getNodeType() == Node.TEXT_NODE) {
@@ -191,7 +188,7 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
             if (t.getChild(1).getText().equals("and")) {
                 return Eval_F(t.getChild(0), n) && Eval_F(t.getChild(2), n);
             }
-            // csae f 'or' f
+            // case f 'or' f
             if (t.getChild(1).getText().equals("or")) {
                 return Eval_F(t.getChild(0), n) || Eval_F(t.getChild(2), n);
             }
