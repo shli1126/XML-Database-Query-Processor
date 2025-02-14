@@ -1,0 +1,10 @@
+# ignore intelliJ project files
+.idea/
+
+# ignore compiled Java files
+out/
+*.class
+
+# ignore test output xml files
+test/
+*.xml
