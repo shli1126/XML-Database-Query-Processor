@@ -6,5 +6,4 @@ out/
 *.class
 
 # ignore test output xml files
-test/
-*.xml
+test/*/*.xml

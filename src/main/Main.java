@@ -20,26 +20,14 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
-import main.antlr.XPathLexer;
-import main.antlr.XPathParser;
+import main.antlr.XQueryLexer;
+import main.antlr.XQueryParser;
 
 public class Main {
 
     public static void main(String[] args) {
-        // Find all persons in the play:
-        // String xpathQuery = "doc(\"j_caesar.xml\")//PERSONA";
 
-        // Find the scenes in which CAESAR speaks
-        // String xpathQuery = "doc(\"j_caesar.xml\")//SCENE[SPEECH/SPEAKER/text() = \"CAESAR\"]";
-
-        //Find the acts containing some scene in which both CAESAR and BRUTUS speak
-        // String xpathQuery = "doc(\"j_caesar.xml\")//ACT[SCENE [SPEECH/SPEAKER/text() = \"CAESAR\" and SPEECH/SPEAKER/text() = \"BRUTUS\"]]";
-        // String xpathQuery = "doc(\"j_caesar.xml\")//ACT[SCENE [SPEECH/SPEAKER/text() = \"CAESAR\"][SPEECH/SPEAKER/text() = \"BRUTUS\"]]";
-
-        //Find the acts in which CAESAR no longer appears
-        // String xpathQuery = "doc(\"j_caesar.xml\")//ACT[not .//SPEAKER/text() = \"CAESAR\"]";
-
-        System.out.println("Starting program...");
+        System.out.println("Starting the program...");
 
         if (args.length < 3) {
             System.err.println("Invalid number of arguments");
@@ -50,16 +38,16 @@ public class Main {
         String inputQueryFile = args[1];
         String outputXmlFile = args[2];
 
-        String xpathQuery = readQueryFromFile(inputQueryFile).trim();
+        String xqueryQuery = readQueryFromFile(inputQueryFile).trim();
 
-        ParseTree parseTree = parseXPath(xpathQuery);
+        ParseTree parseTree = parseXQuery(xqueryQuery);
 
         // System.out.println("Parse Tree: " + parseTree.toStringTree());
 
-        XPathEvaluator evaluator = new XPathEvaluator();
+        XQueryEvaluator evaluator = new XQueryEvaluator(); // Changed from XPathEvaluator
         List<Node> result = evaluator.visit(parseTree);
 
-        // convert dom nodes back to xml
+        // Convert DOM nodes back to XML
         saveToXml(result, outputXmlFile);
     }
 
@@ -76,12 +64,12 @@ public class Main {
         return query.toString().trim();
     }
 
-    private static ParseTree parseXPath(String xpathQuery) {
-        CharStream inputStream = CharStreams.fromString(xpathQuery);
-        XPathLexer lexer = new XPathLexer(inputStream);
+    private static ParseTree parseXQuery(String xqueryQuery) {
+        CharStream inputStream = CharStreams.fromString(xqueryQuery);
+        XQueryLexer lexer = new XQueryLexer(inputStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
-        XPathParser parser = new XPathParser(tokens);
-        return parser.ap();     // xpath root rule
+        XQueryParser parser = new XQueryParser(tokens);
+        return parser.xq();     // xquery root rule
     }
 
     private static void saveToXml(List<Node> result, String outputFilename) {
