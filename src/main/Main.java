@@ -43,8 +43,12 @@ public class Main {
         ParseTree parseTree = parseXQuery(xqueryQuery);
 
         // System.out.println("Parse Tree: " + parseTree.toStringTree());
-
-        XQueryEvaluator evaluator = new XQueryEvaluator(); // Changed from XPathEvaluator
+        Document document = loadXmlDocument(inputXmlFile);
+        if (document == null) {
+            System.err.println("Failed to load XML document: " + inputXmlFile);
+            return;
+        }
+        XQueryEvaluator evaluator = new XQueryEvaluator(document); // Changed from XPathEvaluator
         List<Node> result = evaluator.visit(parseTree);
 
         // Convert DOM nodes back to XML
@@ -62,6 +66,18 @@ public class Main {
             e.printStackTrace();
         }
         return query.toString().trim();
+    }
+
+    private static Document loadXmlDocument(String filePath) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            return builder.parse(new File(filePath));
+        } catch (Exception e) {
+            System.err.println("Error loading XML document: " + filePath);
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private static ParseTree parseXQuery(String xqueryQuery) {
