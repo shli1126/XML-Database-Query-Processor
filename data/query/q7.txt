@@ -1,0 +1,1 @@
+doc("j_caesar.xml")//SPEECH/SPEAKER[not(./text()==./*/text())]/../../../../TITLE

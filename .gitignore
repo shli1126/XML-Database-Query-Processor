@@ -2,9 +2,8 @@
 .idea/
 
 # ignore compiled Java files
+classes/
 out/
-*.class
 
 # ignore test output xml files
-test/
-*.xml
+data/result/

@@ -8,15 +8,15 @@ ap  : doc '/' rp
     | doc '//' rp
     ;
 
-doc : 'doc' '(' STRING ')'
-    | 'document' '(' STRING ')'
+doc : 'doc' '(' '"' STRING '"' ')'
+    | 'document' '(' '"' STRING '"' ')'
     ;
 
 rp  : TAGNAME
     | '*'
     | '.'
     | '..'
-    | 'text()'
+    | 'text' | 'text()'
     | '@' ATTRNAME
     | '(' rp ')'
     | rp '/' rp
@@ -39,8 +39,8 @@ TAGNAME  : [a-zA-Z_][a-zA-Z0-9_-]* ;
 
 ATTRNAME : [a-zA-Z_][a-zA-Z0-9_-]* ;
 
-STRING   : '"' (~["\r\n])* '"'
-         | '\'' (~['\r\n])* '\''
+STRING   : '"' (~["\r\n])*? '"'
+         | '\'' (~['\r\n])*? '\''
          ;
 
 // value-eq

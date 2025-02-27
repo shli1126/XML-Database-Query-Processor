@@ -9,6 +9,7 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -17,11 +18,20 @@ import java.util.stream.Collectors;
 
 public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
 
-    // no need for constructor, default rule is ap, starts with doc("filename.xml")
+    private final String inputXmlFile;
+
+    public XPathEvaluator(String inputXmlFile) {
+        this.inputXmlFile = inputXmlFile;
+    }
+
     @Override
     public List<Node> visitAp(XPathParser.ApContext ctx) {
         String fileName = ctx.getChild(0).getChild(2).getText();
         fileName = fileName.substring(1, fileName.length() - 1);
+
+        if (!new File(fileName).exists()) {
+            fileName = inputXmlFile;
+        }
 
         Document document;
         try {
@@ -60,36 +70,29 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
         if (t == null) {
             return res;
         }
-        // With only one child, case (3) - (7)
         if (t.getChildCount() == 1) {
-            // <TAG NAME/>
             if (t.getText().matches("[a-zA-Z_][a-zA-Z0-9_-]*")) {
                 String tagName = t.getChild(0).getText();
                 NodeList nodes = n.getChildNodes();
                 for (int i = 0; i < nodes.getLength(); i++) {
                     Node node = nodes.item(i);
-                    // don't include text and comment node
                     if (node.getNodeType() == Node.ELEMENT_NODE && node.getNodeName().equals(tagName)) {
                         res.add(node);
                     }
                 }
-            } // '*'
-            else if (t.getText().equals("*")) {
+            } else if (t.getText().equals("*")) {
                 NodeList nodes = n.getChildNodes();
                 for (int i = 0; i < nodes.getLength(); i++) {
                     res.add(nodes.item(i));
                 }
-            } // '.'
-            else if (t.getText().equals(".")) {
+            } else if (t.getText().equals(".")) {
                 res.add(n);
-            } // '..'
-            else if (t.getText().equals("..")) {
+            } else if (t.getText().equals("..")) {
                 Node parent = n.getParentNode();
                 if (parent != null) {
                     res.add(parent);
                 }
-            } // 'text()'
-            else if (t.getText().equals("text()")) {
+            } else if (t.getText().equals("text()")) {
                 NodeList nodes = n.getChildNodes();
                 for (int i = 0; i < nodes.getLength(); i++) {
                     if (nodes.item(i).getNodeType() == Node.TEXT_NODE) {
@@ -97,9 +100,7 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
                     }
                 }
             }
-        } // multiple child case
-        else {
-            // '@' ATTRNAME
+        } else {
             if (t.getChildCount() == 2 && t.getChild(0).getText().equals("@")) {
                 if (n.getNodeType() == Node.ELEMENT_NODE && n.hasAttributes()) {
                     String attName = t.getChild(1).getText();
@@ -108,8 +109,7 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
                         res.add(attNode);
                     }
                 }
-            } // '(' rp ')'
-            else if (t.getChildCount() == 3 && "(".equals(t.getChild(0).getText())
+            } else if (t.getChildCount() == 3 && "(".equals(t.getChild(0).getText())
                     && ")".equals(t.getChild(2).getText())) {
                 res.addAll(Eval_R(t.getChild(1), n));
             } else if (t.getChildCount() == 3) {
@@ -160,18 +160,15 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
     }
 
     public Boolean Eval_F(ParseTree t, Node n) {
-        // case rp
         if (t.getChildCount() == 1) {
             List<Node> res = Eval_R(t.getChild(0), n);
             return !res.isEmpty();
-        } // case 'not' f
-        else if (t.getChildCount() == 2) {
+        } else if (t.getChildCount() == 2) {
             return !Eval_F(t.getChild(1), n);
         } else if (t.getChildCount() == 3) {
 
             String op = t.getChild(1).getText();
 
-            // case rp '=' STRING
             if (t.getChild(2).getText().startsWith("'") || t.getChild(2).getText().startsWith("\"")) {
                 String target = t.getChild(2).getText();
                 target = target.substring(1, target.length() - 1);
@@ -183,22 +180,19 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
                 }
                 return false;
             }
-            // case f 'and' f
             if (t.getChild(1).getText().equals("and")) {
                 return Eval_F(t.getChild(0), n) && Eval_F(t.getChild(2), n);
             }
-            // case f 'or' f
             if (t.getChild(1).getText().equals("or")) {
                 return Eval_F(t.getChild(0), n) || Eval_F(t.getChild(2), n);
             }
-            // case '(' f ')'
             if (t.getChild(0).getText().equals("(") && t.getChild(2).getText().equals(")")) {
                 return Eval_F(t.getChild(1), n);
             }
 
             List<Node> left = Eval_R(t.getChild(0), n);
             List<Node> right = Eval_R(t.getChild(2), n);
-            // case rp EQ rp
+
             if (op.equals("=") || op.equals("eq")) {
                 for (Node i : left) {
                     for (Node j : right) {
@@ -209,7 +203,6 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
                 }
                 return false;
             }
-            // case rp IS rp
             if (op.equals("==") || op.equals("is")) {
                 for (Node i : left) {
                     for (Node j : right) {
@@ -220,7 +213,6 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
                 }
                 return false;
             }
-
         }
         return false;
     }
@@ -233,5 +225,4 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
             getAllDescendants(curNode, descendants);
         }
     }
-
 }
