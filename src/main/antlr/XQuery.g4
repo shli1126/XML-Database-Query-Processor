@@ -79,17 +79,13 @@ f
     | 'not' f
     ;
 
-var
-    : '$' TAGNAME
-    ;
+EQ
+    : '=' | 'eq' ;
 
-tagName
-    : TAGNAME
-    ;
+// id-eq
+IS
+    : '==' | 'is' ;
 
-attrName
-    : ATTRNAME
-    ;
 
 TAGNAME
     : [a-zA-Z_][a-zA-Z0-9_-]*;
@@ -102,13 +98,19 @@ STRING
     | '\'' (~['\r\n])* '\''
     ;
 
-// value-eq
-EQ
-    : '=' | 'eq' ;
+VAR : '$' TAGNAME ;
 
-// id-eq
-IS
-    : '==' | 'is' ;
+var : VAR ;
+
+tagName
+    : TAGNAME
+    ;
+
+attrName
+    : ATTRNAME
+    ;
+
+// value-eq
 
 // whitespace
 WS

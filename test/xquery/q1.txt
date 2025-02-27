@@ -6,5 +6,5 @@ where $sp/LINE/text() = "Et tu, Brute! Then fall, Caesar."
 return <who>{$sp/SPEAKER/text()}</who>,
 <when>{<act>{$a/TITLE/text()}</act>,
 <scene>{$sc/TITLE/text()}</scene>}
-<when>
+</when>
 }</result>

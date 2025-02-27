@@ -13,163 +13,263 @@ import java.util.*;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import java.util.stream.Collectors;
+import org.w3c.dom.NamedNodeMap;
 
 public class XQueryEvaluator extends XQueryBaseVisitor<List<Node>> {
-    // add required data structures
-    // may need map for storing var?
-    private Document document; // The XML document being queried
-    private Map<String, List<Node>> varCtx;
+
+    private Map<String, List<Node>> variableContext;
+    private Document document;
 
     public XQueryEvaluator(Document document) {
         this.document = document;
-        this.varCtx = new HashMap<>();
+        this.variableContext = new HashMap<>();
     }
-
-
-    @Override
-    public List<Node> visitAp(XQueryParser.ApContext ctx) {
-        List<Node> docNodes;
-
-        // Get document
-        if (ctx.doc() != null) {
-            docNodes = visitDoc(ctx.doc());
-        } else {
-            throw new RuntimeException("Document node not found in absolute path");
-        }
-
-        // Apply the relative path
-        List<Node> result = new ArrayList<>();
-        String op = ctx.getChild(1).getText();
-
-        if (op.equals("/")) {
-            // Direct children
-            for (Node docNode : docNodes) {
-                result.addAll(Eval_R(ctx.rp(), docNode));
-            }
-        } else if (op.equals("//")) {
-            // All descendants
-            for (Node docNode : docNodes) {
-                Set<Node> descendants = new HashSet<>();
-                descendants.add(docNode);
-                getAllDescendants(docNode, descendants);
-                for (Node descendant : descendants) {
-                    result.addAll(Eval_R(ctx.rp(), descendant));
-                }
-            }
-        }
-
-        return result;
-    }
-
-
-
 
 
     // entry point is visitXq instead of visitAp for xquery
     @Override
     public List<Node> visitXq(XQueryParser.XqContext ctx) {
         // TODO
-        // case 22
+        // rule 22
         if (ctx.var() != null) {
-            return visitVar(ctx.var());
+            String varName = ctx.var().getText();
+            System.out.println("Looking up variable: " + varName);
+            System.out.println("Available variables: " + variableContext.keySet());
+
+            if (variableContext.containsKey(varName)) {
+                List<Node> values = variableContext.get(varName);
+                System.out.println("Found " + values.size() + " values for " + varName);
+                return values;
+            } else {
+                System.out.println("Variable not found in context: " + varName);
+                return new ArrayList<>();
+            }
         }
-        // case 23
-        if (ctx.STRING() != null) {
+        // rule 23
+        else if (ctx.STRING() != null) {
             String text = ctx.STRING().getText();
             text = text.substring(1, text.length() - 1);
-            Node node = document.createTextNode(text);
-            return List.of(node);
+            List<Node> result = new ArrayList<>();
+            result.add(document.createTextNode(text));
+            return result;
         }
         // case 24
-        if (ctx.ap() != null) {
+        else if (ctx.ap() != null) {
             return visitAp(ctx.ap());
         }
         // case 25
-        if (ctx.xq() != null && ctx.getChildCount() == 3 && ctx.getChild(0).getText().equals("(") && ctx.getChild(2).getText().equals(")")) {
-            return visitXq(ctx.xq(0));
+        else if (ctx.getChildCount() == 3 && ctx.getChild(0).getText().equals("(") && ctx.getChild(2).getText().equals(")")) {
+            return visit(ctx.xq(0));
         }
         // case 26
-        if (ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals(",")) {
-            List<Node> res = new ArrayList<>();
-            res.addAll(visitXq(ctx.xq(0)));
-            res.addAll(visitXq(ctx.xq(1)));
-            return res;
+        else if (ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals(",")) {
+            List<Node> result = new ArrayList<>();
+            result.addAll(visit(ctx.xq(0)));
+            result.addAll(visit(ctx.xq(1)));
+            return result;
         }
-        // case 27, 28
-        if (ctx.rp() != null && ctx.getChildCount() == 3 &&
-                (ctx.getChild(1).getText().equals("/") || ctx.getChild(1).getText().equals("//"))) {
-            String op = ctx.getChild(1).getText();
-            List<Node> nodes = visitXq(ctx.xq(0));
-            List<Node> res = new ArrayList<>();
+        // case 27
+        else if (ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals("/")) {
+            System.out.println("Ever reach / case???" + ctx.getText());
 
-            for (Node node : nodes) {
-                if (op.equals("/")) {
-                    res.addAll(Eval_R(ctx.rp(), node));
-                } else {
-                    Set<Node> descendants = new HashSet<>();
-                    descendants.add(node);
-                    getAllDescendants(node, descendants);
-                    for (Node descendant : descendants) {
-                        res.addAll(Eval_R(ctx.rp(), descendant));
-                    }
+            List<Node> intermediateResults = visit(ctx.xq(0));
+            System.out.println("How much intermediateResults" + intermediateResults.size());
+            List<Node> finalResults = new ArrayList<>();
+            for (Node n : intermediateResults) {
+                finalResults.addAll(Eval_R(ctx.rp(), n));
+            }
+            return finalResults.stream().distinct().collect(Collectors.toList());
+        }
+        // case 28
+        else if (ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals("//")) {
+            System.out.println("Ever reach // case???" + ctx.getText());
+
+            List<Node> intermediateResults = visit(ctx.xq(0));
+            System.out.println("How much intermediateResults" + intermediateResults.size());
+
+            List<Node> finalResults = new ArrayList<>();
+            for (Node n : intermediateResults) {
+                Set<Node> descendants = new HashSet<>();
+                descendants.add(n);
+                getAllDescendants(n, descendants);
+                for (Node descendant : descendants) {
+                    finalResults.addAll(Eval_R(ctx.rp(), descendant));
                 }
             }
-            return res;
+            return finalResults.stream().distinct().collect(Collectors.toList());
         }
-
-
         // case 29
-        if (ctx.tagName() != null && ctx.tagName().size() > 0) {
+        else if (ctx.tagName() != null && ctx.tagName().size() == 2) {
             String tagName = ctx.tagName(0).getText();
-            Element elementNode = document.createElement(tagName);
-            if (ctx.xq().size() > 0) {
-                List<Node> nodes = visitXq(ctx.xq(0));
-                for (Node node : nodes) {
-                    if (node.getNodeType() == Node.TEXT_NODE) {
-                        elementNode.appendChild(document.createTextNode(node.getTextContent()));
-                    } else {
-                        elementNode.appendChild(document.importNode(node, true));
-                    }                }
+            List<Node> content = visit(ctx.xq(0));
+            Element element = document.createElement(tagName);
+            for (Node node : content) {
+                Node imported = document.importNode(node.cloneNode(true), true);
+                element.appendChild(imported);
             }
-            return List.of(elementNode);
+            List<Node> result = new ArrayList<>();
+            result.add(element);
+            return result;
+        }
+        // case 40
+        else if (ctx.forClause() != null) {
+            return processFLWOR(ctx);
+        }
+        // case 38
+        else if (ctx.letClause() != null) {
+            Map<String, List<Node>> oldContext = new HashMap<>(variableContext);
+            visitLetClause(ctx.letClause());
+            List<Node> result = visit(ctx.xq(0));
+            variableContext = oldContext; // Restore the context
+            return result;
         }
 
-        // case 38
-        if (ctx.letClause() != null && ctx.forClause() == null &&
-                ctx.whereClause() == null && ctx.returnClause() == null) {
-            Map<String, List<Node>> temp = new HashMap<>(varCtx);
-            evaluateLetClause(ctx.letClause());
-            List<Node> res = visitXq(ctx.xq(0));
-            varCtx = temp;
+        System.out.println("Unhandled xQuery expression: " + ctx.getText());
+        return new ArrayList<>();
+    }
+
+    // combine old visitAp and Eval_A?
+    @Override
+    public List<Node> visitAp(XQueryParser.ApContext ctx) {
+        String fileName = ctx.doc().STRING().getText();
+        fileName = fileName.substring(1, fileName.length() - 1);
+
+        Document document;
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            document = builder.parse(fileName);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        Node root = document.getDocumentElement();
+        String op = ctx.getChild(1).getText();
+        XQueryParser.RpContext rp = ctx.rp();
+
+        if (op.equals("/")) {
+            return Eval_R(rp, root);
+        } else if (op.equals("//")) {
+            Set<Node> nodes = new HashSet<>();
+            nodes.add(root);
+            getAllDescendants(root, nodes);
+
+            List<Node> res = new ArrayList<>();
+            for (Node node : nodes) {
+                res.addAll(Eval_R(rp, node));
+            }
+            return res.stream().distinct().collect(Collectors.toList());
+        }
+        System.out.println("Unhandled Ap expression: " + ctx.getText());
+        return new ArrayList<>();
+    }
+
+    // old Eval_R?
+    @Override
+    public List<Node> visitRp(XQueryParser.RpContext ctx) {
+        // TODO
+        return new ArrayList<>();
+    }
+
+    public List<Node> Eval_R(XQueryParser.RpContext ctx, Node n) {
+
+        List<Node> res = new ArrayList<>();
+        if (ctx == null) {
             return res;
         }
-
-
-        // case 40
-        if (ctx.forClause() != null && ctx.returnClause() != null) {
-            Map<String, List<Node>> temp = new HashMap<>(varCtx);
-            List<Map<String, List<Node>>> binds = evaluateForClause(ctx.forClause());
-            List<Node> res = new ArrayList<>();
-
-            for (Map<String, List<Node>> bind : binds) {
-                varCtx.putAll(bind);
-
-                if (ctx.letClause() != null) {
-                    evaluateLetClause(ctx.letClause());
+        if (ctx.getChildCount() == 1) {
+            String text = ctx.getText();
+            if ((ctx.tagName() != null) ||
+                    (!text.equals("*") && !text.equals(".") && !text.equals("..") && !text.equals("text()"))) {
+                String tagName = text;
+                NodeList nodes = n.getChildNodes();
+                for (int i = 0; i < nodes.getLength(); i++) {
+                    Node node = nodes.item(i);
+                    if (node.getNodeType() == Node.ELEMENT_NODE && node.getNodeName().equals(tagName)) {
+                        res.add(node);
+                    }
                 }
-
-                if (ctx.whereClause() != null) {
-                    if (evaluateCond(ctx.whereClause().cond())) {
-                        List<Node> nodes = visitXq(ctx.returnClause().xq());
-                        res.addAll(nodes);
+                return res;
+            } else if (ctx.getText().equals("*")) {
+                NodeList nodes = n.getChildNodes();
+                for (int i = 0; i < nodes.getLength(); i++) {
+                    Node node = nodes.item(i);
+                    if (node.getNodeType() == Node.ELEMENT_NODE) {
+                        res.add(node);
+                    }
+                }
+            } else if (ctx.getText().equals(".")) {
+                res.add(n);
+            } else if (ctx.getText().equals("..")) {
+                Node parent = n.getParentNode();
+                if (parent != null) {
+                    res.add(parent);
+                }
+            } else if (ctx.getText().equals("text()")) {
+                System.out.println("Ever reach this text()??");
+                NodeList nodes = n.getChildNodes();
+                for (int i = 0; i < nodes.getLength(); i++) {
+                    if (nodes.item(i).getNodeType() == Node.TEXT_NODE) {
+                        res.add(nodes.item(i));
                     }
                 }
             }
-            varCtx = temp;
-            return res;
+        } else {
+            // Cases with multiple children
+            if (ctx.getChildCount() == 2 && ctx.getChild(0).getText().equals("@")) {
+                if (n.getNodeType() == Node.ELEMENT_NODE && n.hasAttributes()) {
+                    String attName = ctx.attrName().getText();
+                    Node attNode = ((Element) n).getAttributeNode(attName);
+                    if (attNode != null) {
+                        res.add(attNode);
+                    }
+                }
+            } else if (ctx.getChildCount() == 3 && "(".equals(ctx.getChild(0).getText())
+                    && ")".equals(ctx.getChild(2).getText())) {
+                res.addAll(Eval_R(ctx.rp(0), n));
+            } else if (ctx.getChildCount() == 3) {
+                XQueryParser.RpContext left = ctx.rp(0);
+                String op = ctx.getChild(1).getText();
+                XQueryParser.RpContext right = ctx.rp(1);
+                switch (op) {
+                    case "/" -> {
+                        List<Node> nodes = Eval_R(left, n);
+                        for (Node node : nodes) {
+                            res.addAll(Eval_R(right, node));
+                        }
+                        res = res.stream().distinct().collect(Collectors.toList());
+                    }
+                    case "//" -> {
+                        List<Node> nodes = Eval_R(left, n);
+                        Set<Node> descendants = new HashSet<>();
+                        for (Node node : nodes) {
+                            descendants.add(node);
+                            getAllDescendants(node, descendants);
+                        }
+                        for (Node node : descendants) {
+                            res.addAll(Eval_R(right, node));
+                        }
+                        res = res.stream().distinct().collect(Collectors.toList());
+                    }
+                    case "," -> {
+                        res.addAll(Eval_R(left, n));
+                        res.addAll(Eval_R(right, n));
+                    }
+                }
+            } else if (ctx.getChildCount() == 4
+                    && ctx.getChild(1).getText().equals("[")
+                    && ctx.getChild(3).getText().equals("]")) {
+                XQueryParser.RpContext rp = ctx.rp(0);
+                XQueryParser.FContext filter = ctx.f();
+                List<Node> nodes = Eval_R(rp, n);
+                for (Node node : nodes) {
+                    if (Eval_F(filter, node)) {
+                        res.add(node);
+                    }
+                }
+            }
         }
-        System.err.println("Unhandled visitXq expression: " + ctx.getText());
-        throw new RuntimeException("Xq doesn't match any case!");
+        return res;
     }
 
 
@@ -180,466 +280,424 @@ public class XQueryEvaluator extends XQueryBaseVisitor<List<Node>> {
         return new ArrayList<>();
     }
 
-    public List<Map<String, List<Node>>> evaluateForClause(XQueryParser.ForClauseContext ctx) {
-        // TODO
-        List<Map<String, List<Node>>> res = new ArrayList<>(List.of(new HashMap<>()));
-        for (int i = 0; i < ctx.var().size(); i++) {
-            String var = ctx.var(i).getText();
-            List<Map<String, List<Node>>> tempRes = new ArrayList<>();
+    public Boolean Eval_F(XQueryParser.FContext ctx, Node n) {
+        // Case: Single rp filter
+        if (ctx.getChildCount() == 1) {
+            List<Node> res = Eval_R(ctx.rp(0), n);
+            return !res.isEmpty();
+        }
+        // Case: NOT filter
+        else if (ctx.getChildCount() == 2) {
+            return !Eval_F(ctx.f(0), n);
+        }
+        else if (ctx.getChildCount() == 3) {
+            String op = ctx.getChild(1).getText();
 
-            for (Map<String, List<Node>> bind : res) {
-                Map<String, List<Node>> tempCtx = new HashMap<>(varCtx);
-                varCtx.putAll(bind);
-
-                List<Node> nodes = visitXq(ctx.xq(i));
+            // Case: rp = STRING
+            if (ctx.getChild(2).getText().startsWith("'") || ctx.getChild(2).getText().startsWith("\"")) {
+                String target = ctx.STRING().getText();
+                target = target.substring(1, target.length() - 1);
+                List<Node> nodes = Eval_R(ctx.rp(0), n);
                 for (Node node : nodes) {
-                    Map<String, List<Node>> newBind = new HashMap<>(bind);
-                    newBind.put(var, List.of(node));
-                    tempRes.add(newBind);
+                    if (node.getTextContent().equals(target)) {
+                        return true;
+                    }
                 }
-                varCtx = tempCtx;
+                return false;
             }
-            res = tempRes;
+            // Case: AND filter
+            if (op.equals("and")) {
+                return Eval_F(ctx.f(0), n) && Eval_F(ctx.f(1), n);
+            }
+            // Case: OR filter
+            if (op.equals("or")) {
+                return Eval_F(ctx.f(0), n) || Eval_F(ctx.f(1), n);
+            }
+            // Case: Parenthesized filter
+            if (ctx.getChild(0).getText().equals("(") && ctx.getChild(2).getText().equals(")")) {
+                return Eval_F(ctx.f(0), n);
+            }
+
+            // Case: rp comparison rp
+            List<Node> left = Eval_R(ctx.rp(0), n);
+            List<Node> right = Eval_R(ctx.rp(1), n);
+
+            // Value equality
+            if (op.equals("=") || op.equals("eq")) {
+                for (Node i : left) {
+                    for (Node j : right) {
+                        if (nodesAreValueEqual(i, j)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            // Identity equality
+            if (op.equals("==") || op.equals("is")) {
+                for (Node i : left) {
+                    for (Node j : right) {
+                        if (i.isSameNode(j)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
         }
-        return res;
+        System.out.println("Unhandled Eval_F expression: " + ctx.getText());
+        return false;
     }
 
-    public void evaluateLetClause(XQueryParser.LetClauseContext ctx) {
+//    @Override
+//    public List<Node> visitForClause(XQueryParser.ForClauseContext ctx) {
+//        // TODO
+//        return new ArrayList<>();
+//    }
+
+    @Override
+    public List<Node> visitLetClause(XQueryParser.LetClauseContext ctx) {
         // TODO
+        // does not return a node list, instead, update the varContext
         for (int i = 0; i < ctx.var().size(); i++) {
-            String var = ctx.var(i).getText();
-            List<Node> nodes = visitXq(ctx.xq(i));
-            varCtx.put(var, nodes);
+            String varName = ctx.var(i).getText();
+            List<Node> varValue = visit(ctx.xq(i));
+            variableContext.put(varName, varValue);
         }
+        return null;
     }
 
-
-    public boolean evaluateWhereClause(XQueryParser.WhereClauseContext ctx) {
+    @Override
+    public List<Node> visitWhereClause(XQueryParser.WhereClauseContext ctx) {
         // TODO
-        return evaluateCond(ctx.cond());
+        return null;
     }
 
     @Override
     public List<Node> visitReturnClause(XQueryParser.ReturnClauseContext ctx) {
         // TODO
-        return visitXq(ctx.xq());
+        return visit(ctx.xq());
     }
-
 
     @Override
-    public List<Node> visitDoc(XQueryParser.DocContext ctx) {
-        String fileName;
-        if (ctx.STRING() != null) {
-            fileName = ctx.STRING().getText();
-            // Remove quotes from the filename
-            fileName = fileName.substring(1, fileName.length() - 1);
-        } else {
-            throw new RuntimeException("Document name not found in doc node");
-        }
-
-        try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document doc = builder.parse(new File(fileName));
-            return List.of(doc.getDocumentElement());
-        } catch (Exception e) {
-            throw new RuntimeException("Error loading document: " + fileName, e);
-        }
+    public List<Node> visitCond(XQueryParser.CondContext ctx) {
+        // TODO
+        return new ArrayList<>();
     }
 
-
-    @Override
-    public List<Node> visitVar(XQueryParser.VarContext ctx) {
-        String var = ctx.getText();
-        if (varCtx.containsKey(var)) {
-            return new ArrayList<>(varCtx.get(var));
-        } else {
-            throw new RuntimeException("Var not in varCtx");
-        }
-    }
+    public Boolean evaluateCondition(XQueryParser.CondContext ctx) {
 
 
-    public Boolean evaluateCond(XQueryParser.CondContext ctx) {
-        // case 30
-        if (ctx.EQ() != null) {
-            List<Node> left = visitXq(ctx.xq(0));
-            List<Node> right = visitXq(ctx.xq(1));
+        String condText = ctx.getText();
+        if (condText.contains("/text()=")) {
+            // Parse the condition manually since the grammar had trouble
+            int equalsPos = condText.indexOf('=');
+            String leftPart = condText.substring(0, equalsPos);
+            String rightPart = condText.substring(equalsPos + 1);
 
-            // Handle the case where the right-hand side is a string literal
-            if (ctx.xq(1).STRING() != null) {
-                String target = ctx.xq(1).STRING().getText();
-                target = target.substring(1, target.length() - 1); // Remove quotes
+            // Extract the variable path (e.g., "$sp/LINE")
+            int textFuncPos = leftPart.indexOf("/text()");
+            String varPath = leftPart.substring(0, textFuncPos);
 
-                for (Node leftNode : left) {
-                    if (leftNode.getTextContent().equals(target)) {
-                        return true;
-                    }
-                }
-                return false;
+            // Extract the target string, removing quotes
+            if ((rightPart.startsWith("\"") && rightPart.endsWith("\"")) ||
+                    (rightPart.startsWith("'") && rightPart.endsWith("'"))) {
+                rightPart = rightPart.substring(1, rightPart.length() - 1);
             }
 
-            // Handle the case where the right-hand side is an XQuery expression
-            for (Node leftNode : left) {
-                String leftText = leftNode.getTextContent();
+            System.out.println("Comparing " + varPath + " text with: " + rightPart);
 
-                for (Node rightNode : right) {
-                    String rightText = rightNode.getTextContent();
+            // Extract parts of the path
+            String[] pathParts = varPath.split("/");
+            String varName = pathParts[0]; // "$sp"
+            String elementName = pathParts.length > 1 ? pathParts[1] : null; // "LINE"
 
-                    // Compare text content directly
-                    if (leftText.equals(rightText)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-        // case 31
-        if (ctx.IS() != null) {
-            List<Node> left = visitXq(ctx.xq(0));
-            List<Node> right = visitXq(ctx.xq(1));
-            for (Node i : left) {
-                for (Node j : right) {
-                    if (i.isSameNode(j)) {
-                        return true;
-                    }
-
-                }
-            }
-            return false;
-        }
-        // case 32
-        if (ctx.getChildCount() == 4 &&
-                ctx.getChild(0).getText().equals("empty") &&
-                ctx.getChild(1).getText().equals("(") &&
-                ctx.getChild(2).getText().equals(")")) {
-            return visitXq(ctx.xq(0)).isEmpty();
-        }
-
-        // case 33
-        if (ctx.getChildCount() > 3 &&
-                ctx.getChild(0).equals("some") &&
-                ctx.getChild(2).equals("in")
-        ) {
-            List<XQueryParser.VarContext> vars = new ArrayList<>();
-            List<XQueryParser.XqContext> xqs = new ArrayList<>();
-            for (int i = 0; i < ctx.var().size(); i++) {
-                vars.add(ctx.var(i));
-                xqs.add(ctx.xq(i));
-            }
-            return checkSomeCond(vars, xqs, new HashMap<>(), ctx.cond(0), 0);
-        }
-
-        // case 34
-        if (ctx.getChildCount() == 3 &&
-                ctx.getChild(0).getText().equals("(") &&
-                ctx.getChild(2).getText().equals(")")) {
-            return evaluateCond(ctx.cond(0));
-        }
-
-        // case 35
-        if (ctx.getChildCount() == 3 &&
-                ctx.getChild(1).getText().equals("and")) {
-            boolean left = evaluateCond(ctx.cond(0));
-            boolean right = evaluateCond(ctx.cond(1));
-            return left && right;
-        }
-
-        // case 36
-        if (ctx.getChildCount() == 3 &&
-                ctx.getChild(1).getText().equals("or")) {
-            boolean left = evaluateCond(ctx.cond(0));
-            boolean right = evaluateCond(ctx.cond(1));
-            return left || right;
-        }
-
-        // case 37
-        if (ctx.getChildCount() == 2 &&
-                ctx.getChild(0).getText().equals("not")) {
-            return !evaluateCond(ctx.cond(0));
-
-        }
-        System.err.println("Unhandled evaluateCond expression: " + ctx.getText());
-        throw new RuntimeException("Cond doesn't match any case!");
-    }
-
-
-    private boolean checkSomeCond(List<XQueryParser.VarContext> vars, List<XQueryParser.XqContext> xqs,
-                                  Map<String, List<Node>> curBind, XQueryParser.CondContext cond, int curIdx) {
-
-        if (curIdx >= vars.size()) {
-            Map<String, List<Node>> temp = new HashMap<>(varCtx);
-            varCtx.putAll(curBind);
-            boolean res = evaluateCond(cond);
-            varCtx = temp;
-            return res;
-        }
-        XQueryParser.VarContext curVar = vars.get(curIdx);
-        XQueryParser.XqContext curXq = xqs.get(curIdx);
-        Map<String, List<Node>> temp = new HashMap<>(varCtx);
-        varCtx.putAll(curBind);
-        List<Node> nodes = visitXq(curXq);
-        varCtx = temp;
-        for (Node node : nodes) {
-            Map<String, List<Node>> newBind = new HashMap<>(curBind);
-            newBind.put(curVar.getText(), List.of(node));
-            if (checkSomeCond(vars, xqs, newBind, cond, curIdx + 1)) {
-                return true;
-            }
-
-        }
-        return false;
-    }
-
-
-    public List<Node> Eval_A(ParseTree t, Node n) {
-        String op = t.getChild(1).getText();
-        ParseTree rp = t.getChild(2);
-        if (op.equals("/")) {
-            return this.Eval_R(rp, n);
-        } else if (!op.equals("//")) {
-            return new ArrayList<Node>();
-        } else {
-            Set<Node> nodes = new HashSet<Node>();
-            nodes.add(n);
-            this.getAllDescendants(n, nodes);
-            List<Node> res = new ArrayList<Node>();
-
-            for(Node node : nodes) {
-                res.addAll(this.Eval_R(rp, node));
-            }
-
-            return res;
-        }
-    }
-
-    public List<Node> Eval_R(ParseTree t, Node n) {
-        List<Node> res = new ArrayList<Node>();
-        if (t == null) {
-            return res;
-        } else {
-            if (t.getText().equals("text()")) {
-                List<Node> ans = new ArrayList<>();
-                NodeList nodes = n.getChildNodes();
-
-                for (int i = 0; i < nodes.getLength(); ++i) {
-                    if (nodes.item(i).getNodeType() == Node.TEXT_NODE) {
-                        ans.add(nodes.item(i));
-                    }
-                }
-
-                if (res.isEmpty() && n.getNodeType() == Node.ELEMENT_NODE) {
-                    Node textNode = document.createTextNode(n.getTextContent());
-                    ans.add(textNode);
-                }
-                return ans;
-            }
-
-
-
-            if (t.getChildCount() == 1) {
-                if (t.getText().matches("[a-zA-Z_][a-zA-Z0-9_-]*")) {
-                    String tagName = t.getChild(0).getText();
-                    NodeList nodes = n.getChildNodes();
-
-                    for(int i = 0; i < nodes.getLength(); ++i) {
-                        Node node = nodes.item(i);
-                        if (node.getNodeType() == 1 && node.getNodeName().equals(tagName)) {
-                            res.add(node);
-                        }
-                    }
-                } else if (t.getText().equals("*")) {
-                    NodeList nodes = n.getChildNodes();
-
-                    for(int i = 0; i < nodes.getLength(); ++i) {
-                        res.add(nodes.item(i));
-                    }
-                } else if (t.getText().equals(".")) {
-                    res.add(n);
-                } else if (t.getText().equals("..")) {
-                    Node parent = n.getParentNode();
-                    if (parent != null) {
-                        res.add(parent);
-                    }
-                } else if (t.getText().equals("text()")) {
-                    NodeList nodes = n.getChildNodes();
-
-                    for(int i = 0; i < nodes.getLength(); ++i) {
-                        if (nodes.item(i).getNodeType() == 3) {
-                            res.add(nodes.item(i));
-                        }
-                    }
-                }
-            } else if (t.getChildCount() == 2 && t.getChild(0).getText().equals("@")) {
-                if (n.getNodeType() == 1 && n.hasAttributes()) {
-                    String attName = t.getChild(1).getText();
-                    Node attNode = ((Element)n).getAttributeNode(attName);
-                    if (attNode != null) {
-                        res.add(attNode);
-                    }
-                }
-            } else if (t.getChildCount() == 3 && "(".equals(t.getChild(0).getText()) && ")".equals(t.getChild(2).getText())) {
-                res.addAll(this.Eval_R(t.getChild(1), n));
-            } else if (t.getChildCount() == 3) {
-                ParseTree left = t.getChild(0);
-                ParseTree op = t.getChild(1);
-                ParseTree right = t.getChild(2);
-                switch (op.getText()) {
-                    case "/":
-                        for(Node node : this.Eval_R(left, n)) {
-                            res.addAll(this.Eval_R(right, node));
-                        }
-
-                        res = res.stream().distinct().collect(Collectors.toList());
-                        break;
-                    case "//":
-                        List<Node> nodes = this.Eval_R(left, n);
-                        Set<Node> descendants = new HashSet<Node>();
-
-                        for(Node node : nodes) {
-                            descendants.add(node);
-                            this.getAllDescendants(node, descendants);
-                        }
-
-                        for(Node node : descendants) {
-                            res.addAll(this.Eval_R(right, node));
-                        }
-
-                        res = res.stream().distinct().collect(Collectors.toList());
-                        break;
-                    case ",":
-                        res.addAll(this.Eval_R(left, n));
-                        res.addAll(this.Eval_R(right, n));
-                }
-            } else if (t.getChildCount() == 4 && t.getChild(1).getText().equals("[") && t.getChild(3).getText().equals("]")) {
-                ParseTree rp = t.getChild(0);
-                ParseTree filter = t.getChild(2);
-
-                for(Node node : this.Eval_R(rp, n)) {
-                    if (this.Eval_F(filter, node)) {
-                        res.add(node);
-                    }
-                }
-            }
-
-            return res;
-        }
-    }
-
-    public Boolean Eval_F(ParseTree t, Node n) {
-        if (t.getChildCount() == 1) {
-            List<Node> res = this.Eval_R(t.getChild(0), n);
-            return !res.isEmpty();
-        } else if (t.getChildCount() == 2) {
-            return !this.Eval_F(t.getChild(1), n);
-        } else if (t.getChildCount() == 3) {
-            String op = t.getChild(1).getText();
-
-            if (t.getChild(2).getText().startsWith("'") || t.getChild(2).getText().startsWith("\"")) {
-                String target = t.getChild(2).getText();
-                target = target.substring(1, target.length() - 1);
-
-                for (Node node : this.Eval_R(t.getChild(0), n)) {
-                    if (node.getTextContent().equals(target)) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-
-
-            if (!t.getChild(2).getText().startsWith("'") && !t.getChild(2).getText().startsWith("\"")) {
-                if (t.getChild(1).getText().equals("and")) {
-                    return this.Eval_F(t.getChild(0), n) && this.Eval_F(t.getChild(2), n);
-                } else if (t.getChild(1).getText().equals("or")) {
-                    return this.Eval_F(t.getChild(0), n) || this.Eval_F(t.getChild(2), n);
-                } else if (t.getChild(0).getText().equals("(") && t.getChild(2).getText().equals(")")) {
-                    return this.Eval_F(t.getChild(1), n);
-                } else {
-                    List<Node> left = this.Eval_R(t.getChild(0), n);
-                    List<Node> right = this.Eval_R(t.getChild(2), n);
-                    if (!op.equals("=") && !op.equals("eq")) {
-                        if (!op.equals("==") && !op.equals("is")) {
-                            return false;
-                        } else {
-                            for(Node i : left) {
-                                for(Node j : right) {
-                                    if (i.getNodeType() == 3 && j.getNodeType() == 3 && i.isSameNode(j)) {
-                                        return true;
-                                    }
-                                }
-                            }
-
-                            return false;
-                        }
-                    } else {
-                        for(Node i : left) {
-                            for(Node j : right) {
-                                if (i.isEqualNode(j)) {
+            // Evaluate the path
+            if (variableContext.containsKey(varName)) {
+                List<Node> contextNodes = variableContext.get(varName);
+                for (Node contextNode : contextNodes) {
+                    if (elementName != null) {
+                        // Find children with matching element name
+                        NodeList children = contextNode.getChildNodes();
+                        for (int i = 0; i < children.getLength(); i++) {
+                            Node child = children.item(i);
+                            if (child.getNodeType() == Node.ELEMENT_NODE &&
+                                    child.getNodeName().equals(elementName)) {
+                                if (child.getTextContent().equals(rightPart)) {
                                     return true;
                                 }
                             }
                         }
-
-                        return false;
+                    } else {
+                        // Just check the context node text
+                        if (contextNode.getTextContent().equals(rightPart)) {
+                            return true;
+                        }
                     }
                 }
-            } else {
-                String target = t.getChild(2).getText();
-                target = target.substring(1, target.length() - 1);
-
-                for(Node node : this.Eval_R(t.getChild(0), n)) {
-                    if (node.getTextContent().equals(target)) {
-                        return true;
-                    }
-                }
-
-                return false;
             }
-        } else {
             return false;
         }
-    }
 
-    public void getAllDescendants(Node node, Set<Node> descendants) {
-        NodeList nodes = node.getChildNodes();
+        // Rule 30-31: Value and identity equality
+        if (ctx.getChildCount() == 3 && (ctx.EQ() != null || ctx.IS() != null)) {
+            List<Node> left = visit(ctx.xq(0));
+            List<Node> right = visit(ctx.xq(1));
 
-        for(int i = 0; i < nodes.getLength(); ++i) {
-            Node curNode = nodes.item(i);
-            descendants.add(curNode);
-            this.getAllDescendants(curNode, descendants);
+            // Rule 30: Value equality (=, eq)
+            if (ctx.EQ() != null) {
+                for (Node leftNode : left) {
+                    for (Node rightNode : right) {
+                        if (nodesAreValueEqual(leftNode, rightNode)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            // Rule 31: Identity equality (==, is)
+            else if (ctx.IS() != null) {
+                for (Node leftNode : left) {
+                    for (Node rightNode : right) {
+                        if (leftNode.isSameNode(rightNode)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
         }
-
+        // Rule 32: Empty condition
+        else if (ctx.getChildCount() == 4 && ctx.getChild(0).getText().equals("empty")) {
+            return visit(ctx.xq(0)).isEmpty();
+        }
+        // Rule 33: Some satisfies condition (existential quantification)
+        else if (ctx.getChildCount() >= 5 && ctx.getChild(0).getText().equals("some")) {
+            return evaluateSomeCondition(ctx);
+        }
+        // Rule 34: Parenthesized condition
+        else if (ctx.getChildCount() == 3 && ctx.getChild(0).getText().equals("(") && ctx.getChild(2).getText().equals(")")) {
+            return evaluateCondition(ctx.cond(0));
+        }
+        // Rule 35: AND condition
+        else if (ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals("and")) {
+            return evaluateCondition(ctx.cond(0)) && evaluateCondition(ctx.cond(1));
+        }
+        // Rule 36: OR condition
+        else if (ctx.getChildCount() == 3 && ctx.getChild(1).getText().equals("or")) {
+            return evaluateCondition(ctx.cond(0)) || evaluateCondition(ctx.cond(1));
+        }
+        // Rule 37: NOT condition
+        else if (ctx.getChildCount() == 2 && ctx.getChild(0).getText().equals("not")) {
+            return !evaluateCondition(ctx.cond(0));
+        }
+        System.out.println("Unhandled Cond expression: " + ctx.getText());
+        return false;
     }
+
     // TODO!!
     // add more if needed, see main.antlr.XQueryBaseVisitor.java
     // e.g. visitDoc(), visitVar(), visitTagName(), visitAttrName()
+    public void getAllDescendants(Node node, Set<Node> descendants) {
+        NodeList nodes = node.getChildNodes();
+        for (int i = 0; i < nodes.getLength(); i++) {
+            Node curNode = nodes.item(i);
+            descendants.add(curNode);
+            getAllDescendants(curNode, descendants);
+        }
+    }
 
-}    // XPath functions
-//    public List<Node> visitAp(XQueryParser.ApContext ctx) {
-//        String fileName = ctx.getChild(0).getChild(2).getText();
-//        fileName = fileName.substring(1, fileName.length() - 1);
-//
-//        Document document;
-//        try {
-//            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-//            DocumentBuilder builder = factory.newDocumentBuilder();
-//            document = builder.parse(fileName);
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
-//
-//        return this.Eval_A(ctx, document.getDocumentElement());
-//    }
+    private List<Node> processFLWOR(XQueryParser.XqContext ctx) {
+        System.out.println("Starting FLWOR processing with correct variable scoping");
 
-//    // combine old visitAp and Eval_A?
-//    @Override
-//    public List<Node> visitAp(XQueryParser.ApContext ctx) {
-//        return visitAp(ctx.ap());
-//    }
-//
-//    // old Eval_R?
-//    @Override
-//    public List<Node> visitRp(XQueryParser.RpContext ctx) {
-//        // TODO
-//        return visitAp(ctx.ap());
-//    }
+        // Save original context to restore later
+        Map<String, List<Node>> savedContext = new HashMap<>(variableContext);
+
+        // Get the list of variables and their expressions from the FOR clause
+        XQueryParser.ForClauseContext forClause = ctx.forClause();
+        List<String> varNames = new ArrayList<>();
+        List<XQueryParser.XqContext> varExpressions = new ArrayList<>();
+
+        for (int i = 0; i < forClause.var().size(); i++) {
+            varNames.add(forClause.var(i).getText());
+            varExpressions.add(forClause.xq(i));
+        }
+
+        // Use a recursive approach to process the nested variable bindings
+        List<Node> results = evaluateNestedForBindings(ctx, 0, varNames, varExpressions);
+
+        // Restore original context
+        variableContext = savedContext;
+        return results;
+    }
+
+    private List<Node> evaluateNestedForBindings(XQueryParser.XqContext ctx,
+                                                 int currentVarIndex,
+                                                 List<String> varNames,
+                                                 List<XQueryParser.XqContext> varExpressions) {
+        List<Node> results = new ArrayList<>();
+
+        // Base case: all variables have been bound
+        if (currentVarIndex == varNames.size()) {
+            // Process LET clause if present
+            if (ctx.letClause() != null) {
+                visitLetClause(ctx.letClause());
+            }
+
+            // Process WHERE clause if present
+            if (ctx.whereClause() != null) {
+                boolean conditionMet = evaluateCondition(ctx.whereClause().cond());
+                if (!conditionMet) {
+                    return results;
+                }
+            }
+
+            // Process RETURN clause
+            results.addAll(visit(ctx.returnClause().xq()));
+            return results;
+        }
+
+        // Evaluate the current variable expression with current context
+        String currentVarName = varNames.get(currentVarIndex);
+        List<Node> currentVarValues = visit(varExpressions.get(currentVarIndex));
+
+        System.out.println("Evaluated " + currentVarName + " and found " + currentVarValues.size() + " values");
+
+        // For each value of the current variable, bind it and recurse
+        for (Node value : currentVarValues) {
+            // Bind the current variable to its value
+            List<Node> singleValue = new ArrayList<>();
+            singleValue.add(value);
+            variableContext.put(currentVarName, singleValue);
+
+            System.out.println("Bound " + currentVarName + " to " + (value.getNodeType() == Node.ELEMENT_NODE ?
+                    value.getNodeName() : "non-element node"));
+
+            // Proceed to the next variable with updated context
+            results.addAll(evaluateNestedForBindings(ctx, currentVarIndex + 1, varNames, varExpressions));
+        }
+
+        return results;
+    }
+
+    private boolean nodesAreValueEqual(Node n1, Node n2) {
+        // Different node types
+        if (n1.getNodeType() != n2.getNodeType()) {
+            return false;
+        }
+
+        // Text nodes - compare content
+        if (n1.getNodeType() == Node.TEXT_NODE) {
+            return n1.getNodeValue().equals(n2.getNodeValue());
+        }
+
+        // Element nodes
+        if (n1.getNodeType() == Node.ELEMENT_NODE) {
+            // Check tag names
+            if (!n1.getNodeName().equals(n2.getNodeName())) {
+                return false;
+            }
+
+            // Check attributes
+            NamedNodeMap attrs1 = n1.getAttributes();
+            NamedNodeMap attrs2 = n2.getAttributes();
+
+            if (attrs1.getLength() != attrs2.getLength()) {
+                return false;
+            }
+
+            for (int i = 0; i < attrs1.getLength(); i++) {
+                Node attr1 = attrs1.item(i);
+                Node attr2 = attrs2.getNamedItem(attr1.getNodeName());
+
+                if (attr2 == null || !attr1.getNodeValue().equals(attr2.getNodeValue())) {
+                    return false;
+                }
+            }
+
+            // Check children
+            NodeList children1 = n1.getChildNodes();
+            NodeList children2 = n2.getChildNodes();
+
+            List<Node> elemChildren1 = getElementNodes(children1);
+            List<Node> elemChildren2 = getElementNodes(children2);
+
+            if (elemChildren1.size() != elemChildren2.size()) {
+                return false;
+            }
+
+            for (int i = 0; i < elemChildren1.size(); i++) {
+                if (!nodesAreValueEqual(elemChildren1.get(i), elemChildren2.get(i))) {
+                    return false;
+                }
+            }
+            // All checks passed
+            return true;
+        }
+        // Other node types - compare by value
+        return n1.getNodeValue() != null && n1.getNodeValue().equals(n2.getNodeValue());
+    }
+
+    private List<Node> getElementNodes(NodeList nodeList) {
+        List<Node> result = new ArrayList<>();
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Node node = nodeList.item(i);
+            if (node.getNodeType() == Node.ELEMENT_NODE) {
+                result.add(node);
+            }
+        }
+        return result;
+    }
+
+    private Boolean evaluateSomeCondition(XQueryParser.CondContext ctx) {
+        // Save the current variable context to restore later
+        Map<String, List<Node>> savedContext = new HashMap<>(variableContext);
+
+        int varCount = ctx.var().size();
+        List<String> varNames = new ArrayList<>();
+        List<XQueryParser.XqContext> xqContexts = new ArrayList<>();
+
+        // Get all variables and their XQ expressions
+        for (int i = 0; i < varCount; i++) {
+            varNames.add(ctx.var(i).getText());
+            xqContexts.add(ctx.xq(i));
+        }
+
+        // Get the condition to be evaluated
+        XQueryParser.CondContext condToEval = ctx.cond(0);
+
+        // Implement recursive evaluation using backtracking
+        return backtrackSome(0, varNames, xqContexts, condToEval, savedContext);
+    }
+
+    // Recursive backtracking for "some" expression
+    private Boolean backtrackSome(int index, List<String> varNames, List<XQueryParser.XqContext> xqContexts,
+                                  XQueryParser.CondContext condToEval, Map<String, List<Node>> originalContext) {
+        if (index == varNames.size()) {
+            // All variables bound, evaluate the condition
+            return evaluateCondition(condToEval);
+        }
+
+        String currentVar = varNames.get(index);
+        List<Node> possibleValues = visit(xqContexts.get(index));
+
+        for (Node value : possibleValues) {
+            // Bind this variable to the current value
+            List<Node> singleValue = new ArrayList<>();
+            singleValue.add(value);
+            variableContext.put(currentVar, singleValue);
+
+            // Recursively try the next variable
+            if (backtrackSome(index + 1, varNames, xqContexts, condToEval, originalContext)) {
+                // Restore context before returning
+                variableContext = new HashMap<>(originalContext);
+                return true;
+            }
+        }
+
+        // Restore context when backtracking
+        variableContext = new HashMap<>(originalContext);
+        return false;
+    }
+
+}
