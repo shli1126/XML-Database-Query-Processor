@@ -81,6 +81,7 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
             String text = t.getText();
             Document doc = n.getOwnerDocument();
             Node textNode = doc.createTextNode(text.substring(1, text.length() - 1));
+            System.out.println("text node is" + textNode.getTextContent());
             res.add(textNode);
             return res;
         }
@@ -110,8 +111,11 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
             } else if (t.getText().equals("text()")) {
                 NodeList nodes = n.getChildNodes();
                 for (int i = 0; i < nodes.getLength(); i++) {
-                    if (nodes.item(i).getNodeType() == Node.TEXT_NODE) {
-                        res.add(nodes.item(i));
+                    String text = nodes.item(i).getTextContent().trim();  // Trim extra spaces
+                    if (!text.isEmpty()) {  // Only add non-empty text nodes
+                        Document doc = n.getOwnerDocument();
+                        Node trimmedTextNode = doc.createTextNode(text);
+                        res.add(trimmedTextNode);
                     }
                 }
             }
@@ -243,7 +247,6 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
                 System.out.println("Evaluating or(): " + leftEval + " || " + rightEval);
                 return leftEval || rightEval;
             }
-
             if (t.getChild(0).getText().equals("(") && t.getChild(2).getText().equals(")")) {
                 return Eval_F(t.getChild(1), n);
             }

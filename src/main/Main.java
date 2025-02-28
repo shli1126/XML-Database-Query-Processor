@@ -72,6 +72,31 @@ public class Main {
         return parser.ap();     // xpath root rule
     }
 
+//    private static void saveToXml(List<Node> result, String outputFilename) {
+//        try {
+//            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+//            DocumentBuilder builder = factory.newDocumentBuilder();
+//            Document outputDoc = builder.newDocument();
+//
+//            Node root = outputDoc.createElement("result");
+//            outputDoc.appendChild(root);
+//
+//            for (Node node : result) {
+//                Node importedNode = outputDoc.importNode(node, true);
+//                root.appendChild(importedNode);
+//            }
+//
+//            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+//            DOMSource source = new DOMSource(outputDoc);
+//            StreamResult fileResult = new StreamResult(new File(outputFilename));
+//            transformer.transform(source, fileResult);
+//
+//            System.out.println("Saved result to: " + outputFilename);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }
+
     private static void saveToXml(List<Node> result, String outputFilename) {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -82,11 +107,23 @@ public class Main {
             outputDoc.appendChild(root);
 
             for (Node node : result) {
+                if (node.getNodeType() == Node.TEXT_NODE && node.getTextContent().trim().isEmpty()) {
+                    continue; // Skip empty text nodes
+                }
                 Node importedNode = outputDoc.importNode(node, true);
                 root.appendChild(importedNode);
             }
 
+
+            // Configure Transformer to remove unnecessary newlines and spaces
             Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.INDENT, "no"); // Disable indentation
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.OMIT_XML_DECLARATION, "no"); // Keep XML declaration
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.METHOD, "xml");
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.ENCODING, "UTF-8");
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.STANDALONE, "yes");
+
+            // Write the output
             DOMSource source = new DOMSource(outputDoc);
             StreamResult fileResult = new StreamResult(new File(outputFilename));
             transformer.transform(source, fileResult);
