@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static java.awt.SystemColor.text;
+
 public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
 
     private final String inputXmlFile;
@@ -67,9 +69,22 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
 
     public List<Node> Eval_R(ParseTree t, Node n) {
         List<Node> res = new ArrayList<>();
+
         if (t == null) {
+            System.out.println("t is NULL!!!!!");
             return res;
         }
+
+        // create node with text
+        if (t.getChildCount() == 0 && t.getText().matches("\"[a-zA-Z_][a-zA-Z0-9_-]*\"")) {
+            System.out.println("$$$$$$$");
+            String text = t.getText();
+            Document doc = n.getOwnerDocument();
+            Node textNode = doc.createTextNode(text.substring(1, text.length() - 1));
+            res.add(textNode);
+            return res;
+        }
+
         if (t.getChildCount() == 1) {
             if (t.getText().matches("[a-zA-Z_][a-zA-Z0-9_-]*")) {
                 String tagName = t.getChild(0).getText();
@@ -163,59 +178,80 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
         if (t.getChildCount() == 1) {
             List<Node> res = Eval_R(t.getChild(0), n);
             return !res.isEmpty();
-        } else if (t.getChildCount() == 2) {
-            return !Eval_F(t.getChild(1), n);
-        } else if (t.getChildCount() == 3) {
-
+        }
+        else if (t.getChildCount() == 2 && t.getChild(0).getText().equals("not")) {
+            Boolean result = !Eval_F(t.getChild(1), n);
+            System.out.println("Evaluating not(): " + result);
+            return result;
+        }
+        else if (t.getChildCount() == 3) {
             String op = t.getChild(1).getText();
 
-            if (t.getChild(2).getText().startsWith("'") || t.getChild(2).getText().startsWith("\"")) {
-                String target = t.getChild(2).getText();
-                target = target.substring(1, target.length() - 1);
-                List<Node> nodes = Eval_R(t.getChild(0), n);
-                for (Node node : nodes) {
-                    if (node.getTextContent().equals(target)) {
-                        return true;
+            if (op.equals("=") || op.equals("eq")) {
+                System.out.println("Comparing node = is: ");
+                List<Node> left = Eval_R(t.getChild(0), n);
+                List<Node> right = Eval_R(t.getChild(2), n);
+
+                System.out.println("@@@n.getText() = " + t.getChild(2).getText());
+
+                System.out.println("left size = " + left.size());
+                System.out.println("right size = " + right.size());
+
+                for (Node i : left) {
+                    for (Node j : right) {
+                        System.out.println("Comparing: " + i.getTextContent() + " = " + j.getTextContent());
+                        if (i.getNodeType() == j.getNodeType() && i.getTextContent().equals(j.getTextContent())) { // Compare text content
+                            return true;
+                        }
                     }
                 }
                 return false;
             }
-            if (t.getChild(1).getText().equals("and")) {
-                return Eval_F(t.getChild(0), n) && Eval_F(t.getChild(2), n);
+
+            if (op.equals("==") || op.equals("is")) {
+                System.out.println("Comparing node == is: ");
+                List<Node> left = Eval_R(t.getChild(0), n);
+                List<Node> right = Eval_R(t.getChild(2), n);
+
+//                if (left.isEmpty() && right.isEmpty()) {
+//                    System.out.println("left right both empty, returning true!");
+//                    return true;
+//                }
+
+                for (Node i : left) {
+                    for (Node j : right) {
+                        System.out.println("i = " + i.toString() +  " j = " + j.toString());
+                        if (i.isSameNode(j)) {
+                            System.out.println("Same node found: " + i.getTextContent());
+                            return true;
+                        }
+                    }
+                }
+                return false;
             }
-            if (t.getChild(1).getText().equals("or")) {
-                return Eval_F(t.getChild(0), n) || Eval_F(t.getChild(2), n);
+
+            if (op.equals("and")) {
+                Boolean leftEval = Eval_F(t.getChild(0), n);
+                Boolean rightEval = Eval_F(t.getChild(2), n);
+                System.out.println("Evaluating and(): " + leftEval + " && " + rightEval);
+                return leftEval && rightEval;
             }
+
+            if (op.equals("or")) {
+                Boolean leftEval = Eval_F(t.getChild(0), n);
+                Boolean rightEval = Eval_F(t.getChild(2), n);
+                System.out.println("Evaluating or(): " + leftEval + " || " + rightEval);
+                return leftEval || rightEval;
+            }
+
             if (t.getChild(0).getText().equals("(") && t.getChild(2).getText().equals(")")) {
                 return Eval_F(t.getChild(1), n);
             }
-
-            List<Node> left = Eval_R(t.getChild(0), n);
-            List<Node> right = Eval_R(t.getChild(2), n);
-
-            if (op.equals("=") || op.equals("eq")) {
-                for (Node i : left) {
-                    for (Node j : right) {
-                        if (i.isEqualNode(j)) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-            if (op.equals("==") || op.equals("is")) {
-                for (Node i : left) {
-                    for (Node j : right) {
-                        if (i.getNodeType() == Node.TEXT_NODE && j.getNodeType() == Node.TEXT_NODE && i.isSameNode(j)) {
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
         }
+
         return false;
     }
+
 
     public void getAllDescendants(Node node, Set<Node> descendants) {
         NodeList nodes = node.getChildNodes();

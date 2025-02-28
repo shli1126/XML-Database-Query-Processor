@@ -42,6 +42,9 @@ public class Main {
 
         ParseTree parseTree = parseXPath(xpathQuery);
 
+//        System.out.println("DEBUG: Parsed XPath tree: " + parseTree.toStringTree());
+
+
         XPathEvaluator evaluator = new XPathEvaluator(inputXmlFile);
         List<Node> result = evaluator.visit(parseTree);
 
@@ -75,7 +78,7 @@ public class Main {
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document outputDoc = builder.newDocument();
 
-            Node root = outputDoc.createElement("Results");
+            Node root = outputDoc.createElement("result");
             outputDoc.appendChild(root);
 
             for (Node node : result) {
@@ -93,4 +96,5 @@ public class Main {
             e.printStackTrace();
         }
     }
+
 }

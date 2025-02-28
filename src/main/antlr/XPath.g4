@@ -8,8 +8,8 @@ ap  : doc '/' rp
     | doc '//' rp
     ;
 
-doc : 'doc' '(' '"' STRING '"' ')'
-    | 'document' '(' '"' STRING '"' ')'
+doc : 'doc' '(' (STRING | '\'' STRING '\'') ')'
+    | 'document' '(' (STRING | '\'' STRING '\'') ')'
     ;
 
 rp  : TAGNAME
