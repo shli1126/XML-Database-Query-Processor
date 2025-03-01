@@ -42,6 +42,7 @@ cond
     | cond 'and' cond
     | cond 'or' cond
     | 'not' cond
+    | rp EQ STRING
     ;
 
 ap
@@ -72,7 +73,7 @@ f
     : rp
     | rp EQ rp
     | rp IS rp
-    | rp '=' STRING
+    | rp EQ STRING
     | '(' f ')'
     | f 'and' f
     | f 'or' f
