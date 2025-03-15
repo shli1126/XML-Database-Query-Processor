@@ -2,7 +2,7 @@ package main;
 
 import java.io.File;
 import java.io.IOException;
-
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Scanner;
 
@@ -20,8 +20,8 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
-import main.antlr.XQueryLexer;
-import main.antlr.XQueryParser;
+import main.antlr.XPathLexer;
+import main.antlr.XPathParser;
 
 public class Main {
 
@@ -34,24 +34,22 @@ public class Main {
             return;
         }
 
-        String inputXmlFile = args[0];
-        String inputQueryFile = args[1];
-        String outputXmlFile = args[2];
+        String inputXmlFile = Paths.get(args[0]).toAbsolutePath().toString();
+        String inputQueryFile = Paths.get(args[1]).toAbsolutePath().toString();
+        String outputXmlFile = Paths.get(args[2]).toAbsolutePath().toString();
 
-        String xqueryQuery = readQueryFromFile(inputQueryFile).trim();
+        String XPathQuery = readQueryFromFile(inputQueryFile).trim();
 
-        ParseTree parseTree = parseXQuery(xqueryQuery);
+        ParseTree parseTree = parseXPath(XPathQuery);
 
-        // System.out.println("Parse Tree: " + parseTree.toStringTree());
         Document document = loadXmlDocument(inputXmlFile);
         if (document == null) {
             System.err.println("Failed to load XML document: " + inputXmlFile);
             return;
         }
-        XQueryEvaluator evaluator = new XQueryEvaluator(document); // Changed from XPathEvaluator
+        XPathEvaluator evaluator = new XPathEvaluator(document, inputXmlFile);
         List<Node> result = evaluator.visit(parseTree);
 
-        // Convert DOM nodes back to XML
         saveToXml(result, outputXmlFile);
     }
 
@@ -70,9 +68,14 @@ public class Main {
 
     private static Document loadXmlDocument(String filePath) {
         try {
+            File file = new File(filePath);
+            if (!file.exists()) {
+                System.err.println("File not found: " + file.getAbsolutePath());
+                return null;
+            }
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
-            return builder.parse(new File(filePath));
+            return builder.parse(file);
         } catch (Exception e) {
             System.err.println("Error loading XML document: " + filePath);
             e.printStackTrace();
@@ -80,12 +83,12 @@ public class Main {
         }
     }
 
-    private static ParseTree parseXQuery(String xqueryQuery) {
-        CharStream inputStream = CharStreams.fromString(xqueryQuery);
-        XQueryLexer lexer = new XQueryLexer(inputStream);
+    private static ParseTree parseXPath(String XPathQuery) {
+        CharStream inputStream = CharStreams.fromString(XPathQuery);
+        XPathLexer lexer = new XPathLexer(inputStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
-        XQueryParser parser = new XQueryParser(tokens);
-        return parser.xq();     // xquery root rule
+        XPathParser parser = new XPathParser(tokens);
+        return parser.xq();
     }
 
     private static void saveToXml(List<Node> result, String outputFilename) {
@@ -94,15 +97,18 @@ public class Main {
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document outputDoc = builder.newDocument();
 
-            Node root = outputDoc.createElement("Results");
-            outputDoc.appendChild(root);
-
             for (Node node : result) {
                 Node importedNode = outputDoc.importNode(node, true);
-                root.appendChild(importedNode);
+                outputDoc.appendChild(importedNode);
             }
 
             Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.OMIT_XML_DECLARATION, "no");
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.METHOD, "xml");
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.ENCODING, "UTF-8");
+
             DOMSource source = new DOMSource(outputDoc);
             StreamResult fileResult = new StreamResult(new File(outputFilename));
             transformer.transform(source, fileResult);
@@ -112,4 +118,5 @@ public class Main {
             e.printStackTrace();
         }
     }
+
 }
