@@ -1,4 +1,0 @@
-<results>{
-    for $p in doc("j_caesar.xml")//PERSONAE/PERSONA
-    return <persona>{ $p/text() }</persona>
-}</results>

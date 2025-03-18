@@ -1,0 +1,15 @@
+for $d1 in doc("large-data.xml")/data/d,
+    $d2 in doc("large-data.xml")/data/d,
+    $d3 in doc("large-data.xml")/data/d,
+    $id1 in $d1/id/text(),
+    $id2 in $d2/id/text(),
+    $id3 in $d3/id/text(),
+    $a1 in $d1/a4/text(),
+    $a2 in $d2/a6/text(),
+    $a3 in $d3/a9/text()
+where $a1 eq $a2 and $a2 eq $a3
+return <d>{
+    <id1>{$id1}</id1>,
+    <id2>{$id2}</id2>,
+    <id3>{$id3}</id3>
+}</d>

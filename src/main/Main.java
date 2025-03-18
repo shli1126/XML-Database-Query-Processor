@@ -2,24 +2,22 @@ package main;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Scanner;
-
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
-
 import main.antlr.XPathLexer;
 import main.antlr.XPathParser;
 
@@ -29,24 +27,41 @@ public class Main {
 
         System.out.println("Starting the program...");
 
-        if (args.length < 3) {
+        if (args.length < 4) {
             System.err.println("Invalid number of arguments");
             return;
         }
 
         String inputXmlFile = Paths.get(args[0]).toAbsolutePath().toString();
         String inputQueryFile = Paths.get(args[1]).toAbsolutePath().toString();
-        String outputXmlFile = Paths.get(args[2]).toAbsolutePath().toString();
+        String rewriteQueryFile = Paths.get(args[2]).toAbsolutePath().toString();
+        String outputXmlFile = Paths.get(args[3]).toAbsolutePath().toString();
 
-        String XPathQuery = readQueryFromFile(inputQueryFile).trim();
+        String originalQuery = readQueryFromFile(inputQueryFile).trim();
 
-        ParseTree parseTree = parseXPath(XPathQuery);
+        String rewriteQuery = rewriteQuery(originalQuery);
+        if (rewriteQuery.isEmpty()) {
+            System.err.println("Query rewrite failed.");
+            return;
+        }
+
+        try {
+            Files.write(Paths.get(rewriteQueryFile), rewriteQuery.getBytes());
+            System.out.println("Rewrite query saved to: " + rewriteQueryFile);
+        } catch (IOException e) {
+            System.err.println("Error saving rewrite query to the file.");
+            e.printStackTrace();
+            return;
+        }
+
+        ParseTree parseTree = parseXPath(rewriteQuery);
 
         Document document = loadXmlDocument(inputXmlFile);
         if (document == null) {
             System.err.println("Failed to load XML document: " + inputXmlFile);
             return;
         }
+
         XPathEvaluator evaluator = new XPathEvaluator(document, inputXmlFile);
         List<Node> result = evaluator.visit(parseTree);
 
@@ -64,6 +79,15 @@ public class Main {
             e.printStackTrace();
         }
         return query.toString().trim();
+    }
+
+    private static String rewriteQuery(String originalQuery) {
+        XPathRewriter rewriter = new XPathRewriter();
+        return rewriter.visit(
+                new XPathParser(
+                        new CommonTokenStream(new XPathLexer(CharStreams.fromString(originalQuery)))
+                ).xq()
+        );
     }
 
     private static Document loadXmlDocument(String filePath) {
@@ -118,5 +142,4 @@ public class Main {
             e.printStackTrace();
         }
     }
-
 }

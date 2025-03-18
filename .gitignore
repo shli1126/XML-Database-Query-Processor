@@ -1,2 +1,6 @@
 # ignore intelliJ project files
 .idea/
+
+data/result
+
+classes/

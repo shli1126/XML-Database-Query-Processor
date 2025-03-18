@@ -1,7 +1,7 @@
 
 ### Generate Antlr files using `.g4` file
 ```
-java -jar lib/antlr-4.13.2-complete.jar -Dlanguage=Java -listener -visitor -o src/main/antlr src/main/antlr/XQuery.g4
+java -jar lib/antlr-4.13.2-complete.jar -Dlanguage=Java -listener -visitor -o src/main/antlr src/main/antlr/XPath.g4
 ```
 
 ### Compile the program

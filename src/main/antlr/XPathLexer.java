@@ -1,4 +1,4 @@
-// Generated from XPath.g4 by ANTLR 4.13.2
+// Generated from src/main/antlr/XPath.g4 by ANTLR 4.13.2
 
 package main.antlr;
 

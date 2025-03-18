@@ -477,7 +477,6 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
 
     @Override
     public List<Node> visitLetClause(XPathParser.LetClauseContext ctx) {
-        // TODO
         for (int i = 0; i < ctx.var().size(); i++) {
             String var = ctx.var(i).getText();
             List<Node> values = visit(ctx.xq(i));
