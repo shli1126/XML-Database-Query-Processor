@@ -43,6 +43,12 @@ public interface XPathVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitReturnClause(XPathParser.ReturnClauseContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link XPathParser#joinClause}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitJoinClause(XPathParser.JoinClauseContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link XPathParser#cond}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -90,4 +96,10 @@ public interface XPathVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitAttrName(XPathParser.AttrNameContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link XPathParser#keyList}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitKeyList(XPathParser.KeyListContext ctx);
 }

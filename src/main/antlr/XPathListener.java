@@ -60,6 +60,16 @@ public interface XPathListener extends ParseTreeListener {
 	 */
 	void exitReturnClause(XPathParser.ReturnClauseContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link XPathParser#joinClause}.
+	 * @param ctx the parse tree
+	 */
+	void enterJoinClause(XPathParser.JoinClauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link XPathParser#joinClause}.
+	 * @param ctx the parse tree
+	 */
+	void exitJoinClause(XPathParser.JoinClauseContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link XPathParser#cond}.
 	 * @param ctx the parse tree
 	 */
@@ -139,4 +149,14 @@ public interface XPathListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitAttrName(XPathParser.AttrNameContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link XPathParser#keyList}.
+	 * @param ctx the parse tree
+	 */
+	void enterKeyList(XPathParser.KeyListContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link XPathParser#keyList}.
+	 * @param ctx the parse tree
+	 */
+	void exitKeyList(XPathParser.KeyListContext ctx);
 }

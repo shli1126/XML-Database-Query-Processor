@@ -15,6 +15,7 @@ xq
     | '<' tagName '>' '{' xq '}' '</' tagName '>'
     | forClause letClause? whereClause? returnClause
     | letClause xq
+    | joinClause
     ;
 
 forClause
@@ -31,6 +32,10 @@ whereClause
 
 returnClause
     : 'return' xq
+    ;
+
+joinClause
+    : 'join' '(' xq ',' xq ',' keyList ',' keyList ')'
     ;
 
 cond
@@ -109,6 +114,10 @@ tagName
 
 attrName
     : ATTRNAME
+    ;
+
+keyList
+    : '[' tagName (',' tagName)* ']'
     ;
 
 // value-eq

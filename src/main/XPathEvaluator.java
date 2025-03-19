@@ -493,4 +493,5 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
             getAllDescendants(curNode, descendants);
         }
     }
+    
 }

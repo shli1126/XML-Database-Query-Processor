@@ -257,7 +257,7 @@ public class XPathRewriter extends XPathBaseVisitor<String> {
             else {
                 nestedJoinIdx = i;
                 //debug
-                System.out.println("require nested join: " + joinKey);
+//                System.out.println("require nested join: " + joinKey);
             }
         }
 
@@ -313,35 +313,35 @@ public class XPathRewriter extends XPathBaseVisitor<String> {
         resultQuery += ctx.returnClause().getText().replace("$", "$tuple/");
 
         // debug
-        System.out.println("\nFinal rewrite query:\n" + resultQuery);
+//        System.out.println("\nFinal rewrite query:\n" + resultQuery);
 
         return resultQuery;
 
     }
 
-    public static void main(String[] args) {
-        if (args.length < 2) {
-            System.err.println("Usage: java XPathRewriter <input file> <output file>");
-            return;
-        }
-
-        String inputFile = args[0];
-        String outputFile = args[1];
-
-        try {
-            String input = new String(Files.readAllBytes(Paths.get(inputFile)));
-            XPathLexer lexer = new XPathLexer(CharStreams.fromString(input));
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            XPathParser parser = new XPathParser(tokens);
-            ParseTree tree = parser.xq();
-
-            XPathRewriter rewriter = new XPathRewriter();
-            String result = rewriter.visit(tree);
-
-            Files.write(Paths.get(outputFile), result.getBytes());
-            System.out.println("Rewrite result saved to " + outputFile);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+//    public static void main(String[] args) {
+//        if (args.length < 2) {
+//            System.err.println("Usage: java XPathRewriter <input file> <output file>");
+//            return;
+//        }
+//
+//        String inputFile = args[0];
+//        String outputFile = args[1];
+//
+//        try {
+//            String input = new String(Files.readAllBytes(Paths.get(inputFile)));
+//            XPathLexer lexer = new XPathLexer(CharStreams.fromString(input));
+//            CommonTokenStream tokens = new CommonTokenStream(lexer);
+//            XPathParser parser = new XPathParser(tokens);
+//            ParseTree tree = parser.xq();
+//
+//            XPathRewriter rewriter = new XPathRewriter();
+//            String result = rewriter.visit(tree);
+//
+//            Files.write(Paths.get(outputFile), result.getBytes());
+//            System.out.println("Rewrite result saved to " + outputFile);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
 }
