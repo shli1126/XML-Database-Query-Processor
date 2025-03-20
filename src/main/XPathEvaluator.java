@@ -148,7 +148,6 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
             return res;
         }
 
-
         // rule 40, 40  goes first because only 40 has for clause
         // if 38, 39 goes first, it the FLWR will go into 38, 39 rules since it also has let clause
         else if (ctx.forClause() != null) {
@@ -527,9 +526,9 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
                 if (childNode.getNodeName().equals(rightKey)) {
                     String key = childNode.getTextContent();
                     if (hm.containsKey(key)) {
-                        List<Node> matchedLeftTuples = hm.get(key);
+                        List<Node> hmResults = hm.get(key);
 
-                        for (Node leftNode : matchedLeftTuples) {
+                        for (Node leftNode : hmResults) {
                             List<Node> mergedNodes = new ArrayList<>(getAllChildren(leftNode));
                             mergedNodes.addAll(getAllChildren(rightNode));
 

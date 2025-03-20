@@ -1,5 +1,15 @@
 <result>{
-for $d3 in doc("large-data.xml")/d
-return<tuple>{<d3>{$d3}</d3>}</tuple>
+for $tuple in join (
+for $d1 in doc("large-data.xml")/d,
+	$id1 in $d1/id/text(),
+	$a1 in $d1/a2/text()
+return <tuple>{ <d1>{$d1}</d1>, <id1>{$id1}</id1>, <a1>{$a1}</a1> }</tuple>,
+for $d2 in doc("large-data.xml")/data/d,
+	$id2 in $d2/id/text(),
+	$a2 in $d2/a6/text()
+return <tuple>{ <d2>{$d2}</d2>, <id2>{$id2}</id2>, <a2>{$a2}</a2> }</tuple>,
+[a1],[a2]
+)
+return<d>{<id1>{$tuple/id1}</id1>,<id2>{$tuple/id2}</id2>}</d>
 }</result>
 

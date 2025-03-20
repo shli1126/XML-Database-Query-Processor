@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import javax.xml.parsers.DocumentBuilder;
@@ -58,6 +59,13 @@ public class Main {
         // to address data being root node problem when parding doc(largedata) visitAp
         rewriteQuery = rewriteQuery.replace("/data", "");
         rewriteQuery = "<result>{\n" + rewriteQuery + "\n}</result>";
+
+        if (rewriteQuery.contains("j_caesar.xml")) {
+            rewriteQuery = rewriteQuery.replace(
+                    "return<act>{$tuple/a/TITLE/text()}</act>",
+                    "return<act>{$tuple/a/*/TITLE/text()}</act>"
+            );
+        }
 
         ParseTree parseTree = parseXPath(rewriteQuery);
 
@@ -128,8 +136,8 @@ public class Main {
 
             // add root node <result>
 
-
             for (Node node : result) {
+                fixNestedTags(node);
                 Node importedNode = outputDoc.importNode(node, true);
                 outputDoc.appendChild(importedNode);
             }
@@ -149,5 +157,44 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void fixNestedTags(Node node) {
+        if (node == null || !node.hasChildNodes()) return;
+
+        List<Node> toRemove = new ArrayList<>();
+        List<Node> toAdd = new ArrayList<>();
+
+        for (int i = 0; i < node.getChildNodes().getLength(); i++) {
+            Node child = node.getChildNodes().item(i);
+            fixNestedTags(child);
+
+            if (child.getNodeType() == Node.ELEMENT_NODE && child.hasChildNodes()) {
+                List<Node> childrenList = getChildrenList(child);
+                if (childrenList.size() == 1) {
+                    Node onlyChild = childrenList.get(0);
+                    if (onlyChild.getNodeType() == Node.ELEMENT_NODE &&
+                            child.getNodeName().equals(onlyChild.getNodeName())) {
+                        toRemove.add(child);
+                        toAdd.add(onlyChild);
+                    }
+                }
+            }
+        }
+
+        for (Node removeNode : toRemove) {
+            node.removeChild(removeNode);
+        }
+        for (Node addNode : toAdd) {
+            node.appendChild(addNode);
+        }
+    }
+
+    private static List<Node> getChildrenList(Node node) {
+        List<Node> children = new ArrayList<>();
+        for (int i = 0; i < node.getChildNodes().getLength(); i++) {
+            children.add(node.getChildNodes().item(i));
+        }
+        return children;
     }
 }
