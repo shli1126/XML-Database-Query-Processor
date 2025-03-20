@@ -117,7 +117,7 @@ attrName
     ;
 
 keyList
-    : '[' tagName (',' tagName)* ']'
+    : '[' tagName ']'
     ;
 
 // value-eq

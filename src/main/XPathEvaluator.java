@@ -16,6 +16,8 @@ import org.w3c.dom.NodeList;
 
 import java.util.stream.Collectors;
 
+import static main.Main.parseXPath;
+
 public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
     private Map<String, List<Node>> varToValues;
     private Document document;
@@ -73,9 +75,12 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
             System.out.println("Condition context is null!");
             return new ArrayList<>();
         }
-        // TODO
+
+        if (ctx.joinClause() != null) {
+            return visitJoinClause(ctx.joinClause());
+        }
         // rule 22
-        if (ctx.var() != null) {
+        else if (ctx.var() != null) {
             String var = ctx.var().getText();
             if (varToValues.containsKey(var)) {
                 List<Node> values = varToValues.get(var);
@@ -142,6 +147,8 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
             res.add(element);
             return res;
         }
+
+
         // rule 40, 40  goes first because only 40 has for clause
         // if 38, 39 goes first, it the FLWR will go into 38, 39 rules since it also has let clause
         else if (ctx.forClause() != null) {
@@ -485,6 +492,63 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
         return null;
     }
 
+    @Override
+    public List<Node> visitJoinClause(XPathParser.JoinClauseContext ctx) {
+        System.out.println("\n[DEBUG] JOIN CLAUSE PARSED XQUERY:");
+        System.out.println("Left XQuery: " + ctx.xq(0).getText());
+        System.out.println("Right XQuery: " + ctx.xq(1).getText());
+
+        List<Node> leftResults = visit(ctx.xq(0));
+        List<Node> rightResults = visit(ctx.xq(1));
+
+        String leftKey = ctx.keyList(0).tagName().getText();
+        String rightKey = ctx.keyList(1).tagName().getText();
+
+        System.out.println("Left Key: " + leftKey);
+        System.out.println("Right Key: " + rightKey);
+
+        List<Node> results = new ArrayList<>();
+
+        HashMap<String, List<Node>> hm = new HashMap<>();
+        for (Node leftNode : leftResults) {
+            List<Node> childNodes = getAllChildren(leftNode);
+            for (Node childNode : childNodes) {
+                if (childNode.getNodeName().equals(leftKey)) {
+                    String key = childNode.getTextContent();
+                    hm.putIfAbsent(key, new ArrayList<>());
+                    hm.get(key).add(leftNode);
+                }
+            }
+        }
+
+        for (Node rightNode : rightResults) {
+            List<Node> childNodes = getAllChildren(rightNode);
+            for (Node childNode : childNodes) {
+                if (childNode.getNodeName().equals(rightKey)) {
+                    String key = childNode.getTextContent();
+                    if (hm.containsKey(key)) {
+                        List<Node> matchedLeftTuples = hm.get(key);
+
+                        for (Node leftNode : matchedLeftTuples) {
+                            List<Node> mergedNodes = new ArrayList<>(getAllChildren(leftNode));
+                            mergedNodes.addAll(getAllChildren(rightNode));
+
+                            Node resultNode = document.createElement("tuple");
+                            for (Node mergedNode : mergedNodes) {
+                                Node tmpNode = document.importNode(mergedNode, true);
+                                resultNode.appendChild(tmpNode);
+                            }
+                            results.add(resultNode);
+                        }
+                    }
+                }
+            }
+        }
+        return results;
+    }
+
+
+    // helper functions
     public void getAllDescendants(Node node, Set<Node> descendants) {
         NodeList nodes = node.getChildNodes();
         for (int i = 0; i < nodes.getLength(); i++) {
@@ -493,5 +557,12 @@ public class XPathEvaluator extends XPathBaseVisitor<List<Node>> {
             getAllDescendants(curNode, descendants);
         }
     }
-    
+
+    public List<Node> getAllChildren(Node node){
+        List<Node> result = new ArrayList<>();
+        for (int i = 0; i < node.getChildNodes().getLength(); i++) {
+            result.add(node.getChildNodes().item(i));
+        }
+        return result;
+    }
 }

@@ -1,0 +1,5 @@
+<result>{
+for $d3 in doc("large-data.xml")/d
+return<tuple>{<d3>{$d3}</d3>}</tuple>
+}</result>
+

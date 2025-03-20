@@ -17,6 +17,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import main.antlr.XPathLexer;
 import main.antlr.XPathParser;
@@ -53,6 +54,10 @@ public class Main {
             e.printStackTrace();
             return;
         }
+
+        // to address data being root node problem when parding doc(largedata) visitAp
+        rewriteQuery = rewriteQuery.replace("/data", "");
+        rewriteQuery = "<result>{\n" + rewriteQuery + "\n}</result>";
 
         ParseTree parseTree = parseXPath(rewriteQuery);
 
@@ -107,7 +112,7 @@ public class Main {
         }
     }
 
-    private static ParseTree parseXPath(String XPathQuery) {
+    public static ParseTree parseXPath(String XPathQuery) {
         CharStream inputStream = CharStreams.fromString(XPathQuery);
         XPathLexer lexer = new XPathLexer(inputStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -120,6 +125,9 @@ public class Main {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document outputDoc = builder.newDocument();
+
+            // add root node <result>
+
 
             for (Node node : result) {
                 Node importedNode = outputDoc.importNode(node, true);

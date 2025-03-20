@@ -13,14 +13,5 @@ javac -cp lib/* -d classes $java_files
 #    java -cp "classes;lib/*" main.XPathRewriter data/query/query$i.txt data/result/query$i.txt
 #done
 
-for i in {1..4}; do
-    if [ "$i" -eq 1 ]; then
-        XML_FILE="data/j_caesar.xml"
-    else
-        XML_FILE="data/large-data.xml"
-    fi
-
-    java -cp "classes;lib/*" main.Main "$XML_FILE" "data/query/query$i.txt" "data/result/query$i.txt" "data/result/result$i.xml"
-done
-
-#java -cp "classes;lib/*" main.Main "data/large-data.xml" "data/query/query2.txt" "data/result/query2.txt" "data/result/result2.xml"
+#java -cp "classes;lib/*" main.XQueryTest "data/j_caesar.xml" "data/query/testquery1.txt" "data/result/testresult1.xml"
+java -cp "classes;lib/*" main.XQueryTest "data/large-data.xml" "data/query/testquery2.txt" "data/result/testresult2.xml"

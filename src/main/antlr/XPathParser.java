@@ -1513,11 +1513,8 @@ public class XPathParser extends Parser {
 
 	@SuppressWarnings("CheckReturnValue")
 	public static class KeyListContext extends ParserRuleContext {
-		public List<TagNameContext> tagName() {
-			return getRuleContexts(TagNameContext.class);
-		}
-		public TagNameContext tagName(int i) {
-			return getRuleContext(TagNameContext.class,i);
+		public TagNameContext tagName() {
+			return getRuleContext(TagNameContext.class,0);
 		}
 		public KeyListContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -1541,7 +1538,6 @@ public class XPathParser extends Parser {
 	public final KeyListContext keyList() throws RecognitionException {
 		KeyListContext _localctx = new KeyListContext(_ctx, getState());
 		enterRule(_localctx, 28, RULE_keyList);
-		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
@@ -1549,23 +1545,7 @@ public class XPathParser extends Parser {
 			match(T__30);
 			setState(269);
 			tagName();
-			setState(274);
-			_errHandler.sync(this);
-			_la = _input.LA(1);
-			while (_la==T__2) {
-				{
-				{
-				setState(270);
-				match(T__2);
-				setState(271);
-				tagName();
-				}
-				}
-				setState(276);
-				_errHandler.sync(this);
-				_la = _input.LA(1);
-			}
-			setState(277);
+			setState(270);
 			match(T__31);
 			}
 		}
@@ -1637,7 +1617,7 @@ public class XPathParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\u0004\u0001\'\u0118\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
+		"\u0004\u0001\'\u0111\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
 		"\u0002\u0007\u0002\u0002\u0003\u0007\u0003\u0002\u0004\u0007\u0004\u0002"+
 		"\u0005\u0007\u0005\u0002\u0006\u0007\u0006\u0002\u0007\u0007\u0007\u0002"+
 		"\b\u0007\b\u0002\t\u0007\t\u0002\n\u0007\n\u0002\u000b\u0007\u000b\u0002"+
@@ -1676,10 +1656,9 @@ public class XPathParser extends Parser {
 		"\n\u0001\n\u0001\n\u0001\n\u0001\n\u0001\n\u0001\n\u0001\n\u0001\n\u0001"+
 		"\n\u0003\n\u00fa\b\n\u0001\n\u0001\n\u0001\n\u0001\n\u0001\n\u0001\n\u0005"+
 		"\n\u0102\b\n\n\n\f\n\u0105\t\n\u0001\u000b\u0001\u000b\u0001\f\u0001\f"+
-		"\u0001\r\u0001\r\u0001\u000e\u0001\u000e\u0001\u000e\u0001\u000e\u0005"+
-		"\u000e\u0111\b\u000e\n\u000e\f\u000e\u0114\t\u000e\u0001\u000e\u0001\u000e"+
-		"\u0001\u000e\u0000\u0004\u0000\f\u0012\u0014\u000f\u0000\u0002\u0004\u0006"+
-		"\b\n\f\u000e\u0010\u0012\u0014\u0016\u0018\u001a\u001c\u0000\u0000\u0133"+
+		"\u0001\r\u0001\r\u0001\u000e\u0001\u000e\u0001\u000e\u0001\u000e\u0001"+
+		"\u000e\u0000\u0004\u0000\f\u0012\u0014\u000f\u0000\u0002\u0004\u0006\b"+
+		"\n\f\u000e\u0010\u0012\u0014\u0016\u0018\u001a\u001c\u0000\u0000\u012b"+
 		"\u0000=\u0001\u0000\u0000\u0000\u0002M\u0001\u0000\u0000\u0000\u0004["+
 		"\u0001\u0000\u0000\u0000\u0006i\u0001\u0000\u0000\u0000\bl\u0001\u0000"+
 		"\u0000\u0000\no\u0001\u0000\u0000\u0000\f\u00a3\u0001\u0000\u0000\u0000"+
@@ -1808,14 +1787,10 @@ public class XPathParser extends Parser {
 		"\u0103\u0001\u0000\u0000\u0000\u0106\u0107\u0005&\u0000\u0000\u0107\u0017"+
 		"\u0001\u0000\u0000\u0000\u0108\u0109\u0005#\u0000\u0000\u0109\u0019\u0001"+
 		"\u0000\u0000\u0000\u010a\u010b\u0005$\u0000\u0000\u010b\u001b\u0001\u0000"+
-		"\u0000\u0000\u010c\u010d\u0005\u001f\u0000\u0000\u010d\u0112\u0003\u0018"+
-		"\f\u0000\u010e\u010f\u0005\u0003\u0000\u0000\u010f\u0111\u0003\u0018\f"+
-		"\u0000\u0110\u010e\u0001\u0000\u0000\u0000\u0111\u0114\u0001\u0000\u0000"+
-		"\u0000\u0112\u0110\u0001\u0000\u0000\u0000\u0112\u0113\u0001\u0000\u0000"+
-		"\u0000\u0113\u0115\u0001\u0000\u0000\u0000\u0114\u0112\u0001\u0000\u0000"+
-		"\u0000\u0115\u0116\u0005 \u0000\u0000\u0116\u001d\u0001\u0000\u0000\u0000"+
-		"\u001425=HJXf\u0093\u00a3\u00ab\u00ad\u00b8\u00c2\u00d0\u00e0\u00e2\u00f9"+
-		"\u0101\u0103\u0112";
+		"\u0000\u0000\u010c\u010d\u0005\u001f\u0000\u0000\u010d\u010e\u0003\u0018"+
+		"\f\u0000\u010e\u010f\u0005 \u0000\u0000\u010f\u001d\u0001\u0000\u0000"+
+		"\u0000\u001325=HJXf\u0093\u00a3\u00ab\u00ad\u00b8\u00c2\u00d0\u00e0\u00e2"+
+		"\u00f9\u0101\u0103";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {
